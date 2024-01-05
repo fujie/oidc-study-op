@@ -24,14 +24,12 @@ router.get("/userinfo", async (req, res) => {
             errorMessage: "access token is expired."
         });
     } else {
-        res.json({
-            sub: decodedTokenJSON.sub,
-            name: decodedTokenJSON.name,
-            given_name: decodedTokenJSON.given_name,
-            family_name: decodedTokenJSON.family_name,
-            email: decodedTokenJSON.email,
-            email_verified: true
-        })
+        // 不要な要素を削除する
+        delete decodedTokenJSON.iss;
+        delete decodedTokenJSON.aud;
+        delete decodedTokenJSON.exp;
+        delete decodedTokenJSON.iat;
+        res.json(decodedTokenJSON);
     }
 });
 

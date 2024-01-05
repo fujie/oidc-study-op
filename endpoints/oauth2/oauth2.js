@@ -43,7 +43,7 @@ router.post("/token", async (req, res) => {
     // - access_tokenの発行
     // - id_tokenの発行
     const decodedCode = await utils.decryptJWE(req.body.code);
-    const decodedCodeJSON = JSON.parse(decodedCode);
+    let decodedCodeJSON = JSON.parse(decodedCode);
     // 有効期限確認
     const date = new Date();
     if(decodedCodeJSON.exp < (Math.floor(date.getTime() / 1000))){
@@ -53,19 +53,10 @@ router.post("/token", async (req, res) => {
         });
     } else {
         // payload作成
-        const payload = {
-            iss: decodedCodeJSON.iss,
-            aud: decodedCodeJSON.aud,
-            sub: decodedCodeJSON.sub,
-            email: decodedCodeJSON.email,
-            name: decodedCodeJSON.name,
-            given_name: decodedCodeJSON.given_name,
-            family_name: decodedCodeJSON.family_name,
-            nonce: decodedCodeJSON.nonce,
-            exp: Math.floor((date.getTime() + (1000 * 60 * 10)) / 1000),
-            iat: Math.floor(date.getTime() / 1000)
-        };
-        const token = await utils.generateJWS(payload);
+        // 単純に期限を延長しているだけ
+        decodedCodeJSON.exp = Math.floor((date.getTime() + (1000 * 60 * 10)) / 1000);
+        decodedCodeJSON.iat = Math.floor(date.getTime() / 1000);
+        const token = await utils.generateJWS(decodedCodeJSON);
         console.log(token);
         res.json({
             access_token: token, // ちなみにEntra IDの場合はaccess_tokenもid_tokenとほぼ同じものが使われるケースもある。

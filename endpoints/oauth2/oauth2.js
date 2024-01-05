@@ -14,7 +14,7 @@ router.get("/authorize", async (req, res) => {
 
     // codeの生成（本来は暗号化しておく）
     // 最終的にid_tokenに入れる値をDBに保存する代わりに暗号化してcodeに入れておくことでバックエンドを持たずにすませる
-    const baseUrl = req.protocol + '://' + req.headers.host;
+    const baseUrl = 'https://' + req.headers.host;
 
     const date = new Date();
     const jwePayload = {

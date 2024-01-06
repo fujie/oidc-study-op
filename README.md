@@ -12,7 +12,13 @@ OpenID Connectを学ぶにはOpenID Providerを実装してみるのが一番早
     - ``node createKeystore.js``  
 - 起動
     - ``cd ..``
-    - ``node server.js``  
+    - ``node server.js``
+    - http://localhost:3000で起動しますがngrokを通して使うことを想定しています。
+        - 認可エンドポイント: https://{host}/oauth2/authorize
+        - トークンエンドポイント: https://{host}/oauth2/token
+        - userInfoエンドポイント: https://{host}/userinfo
+        - jwks_uriエンドポイント: https://{host}/jwks_uri
+        - ディスカバリエンドポイント：https://{host}/.well-known/openid-configuration
 
 ## 実装状態
 - 認可エンドポイント（/oauth2/authorize）

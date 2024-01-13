@@ -33,6 +33,7 @@ router.get("/authorize", async (req, res) => {
         family_name: "test",
         nonce: req.query.nonce
     };
+    let c_hash, at_hash;
     // response_typeによる処理の振り分け
     if(response_types.includes("code")){
         // code flow
@@ -40,15 +41,8 @@ router.get("/authorize", async (req, res) => {
         payload.exp = Math.floor((date.getTime() + (1000 * 30)) / 1000); // 有効期限は30秒
         const code = await utils.generateJWE(payload);
         responseArr.push("code=" + code);
-    }
-    if(response_types.includes("id_token")){
-        // implicit/hybrid
-        // id_tokenの生成
-        payload.exp = Math.floor((date.getTime() + (1000 * 60 * 10)) / 1000);
-        payload.iat = Math.floor(date.getTime() / 1000);
-        const id_token = await utils.generateJWS(payload);
-        responseArr.push("id_token=" + id_token);
-        isImplcitOrHybrid = true;
+        // c_hashの作成
+        c_hash = utils.createHash(Buffer.from(code));
     }
     if(response_types.includes("token")){
         // implicit/hybrid
@@ -57,6 +51,25 @@ router.get("/authorize", async (req, res) => {
         payload.iat = Math.floor(date.getTime() / 1000);
         const access_token = await utils.generateJWS(payload);
         responseArr.push("access_token=" + access_token);
+        isImplcitOrHybrid = true;
+        // at_hashの作成
+        at_hash = utils.createHash(Buffer.from(access_token));
+    }
+    if(response_types.includes("id_token")){
+        // implicit/hybrid
+        // id_tokenの生成
+        payload.exp = Math.floor((date.getTime() + (1000 * 60 * 10)) / 1000);
+        payload.iat = Math.floor(date.getTime() / 1000);
+        // codeがある場合
+        if(response_types.includes("code")){
+            payload.c_hash = c_hash;
+        }
+        // access_tokenがある場合
+        if(response_types.includes("token")){
+            payload.at_hash = at_hash;
+        }
+        const id_token = await utils.generateJWS(payload);
+        responseArr.push("id_token=" + id_token);
         isImplcitOrHybrid = true;
     }
     // stateをレスポンスに含める

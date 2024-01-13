@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const jose = require('node-jose');
+const crypto = require('crypto');
 
 // 暗号・復号キー
 const encryptKeyString = "1234567890abcdef1234567890abcdef";
@@ -33,4 +34,15 @@ exports.verifyJWS = async function(jws) {
     const ks = fs.readFileSync(path.resolve(__dirname, keyStoreFile));
     const keyStore = await jose.JWK.asKeyStore(ks.toString());
     return (await jose.JWS.createVerify(keyStore).verify(jws)).payload.toString();
+}
+
+// ハッシュの作成
+exports.createHash = function createHash(plainText){
+    // SHA256でハッシュを取る
+    const h = crypto.createHash('sha256').update(plainText).digest('hex');
+    // 左半分をBase64Urlエンコードする
+    return Buffer.from(h.slice(0, h.length /2)).toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/g, '');
 }

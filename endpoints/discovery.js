@@ -3,7 +3,7 @@ const router = require("express").Router();
 // Discoveryエンドポイント
 router.get("/openid-configuration", (req, res) => {
     const baseUrl = 'https://' + req.headers.host;
-    const response_types = ["code"];
+    const response_types = ["code", "code token", "code id_token", "code token id_token", "token", "id_token"];
     const subject_types = ["public"];
     const alg_values = ["RS256"];
     const scopes = ["openid"];

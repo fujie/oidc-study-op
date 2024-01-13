@@ -1,4 +1,5 @@
 const router = require("express").Router();
+const { renameSync } = require("fs");
 const utils = require("../../utils/joseUtil");
 const jose = require("node-jose");
 
@@ -6,18 +7,23 @@ const jose = require("node-jose");
 router.get("/authorize", async (req, res) => {
     // 本来なら実装する処理
     // - ユーザの認証
-    // - response_typeによるフローの振り分け
     // - client_idの登録状態の確認
     // - redirect_uriとclient_idが示すクライアントとの対応確認
     // - scopeの確認
     // - 属性送出に関する同意画面の表示
 
-    // codeの生成（本来は暗号化しておく）
-    // 最終的にid_tokenに入れる値をDBに保存する代わりに暗号化してcodeに入れておくことでバックエンドを持たずにすませる
+    // 認可コード、id_tokenに必要な値の準備
     const baseUrl = 'https://' + req.headers.host;
-
     const date = new Date();
-    const jwePayload = {
+
+    // response_typeの判断
+    const response_types = req.query.response_type.split(" ");
+    // implicitもしくはHybridを判定するフラグ（フラグメントでレスポンスを返すかどうかの判定）
+    let isImplcitOrHybrid = false;
+    // レスポンスを保存する配列
+    let responseArr = [];
+    // ペイロード（暫定なので固定値。有効期限関係だけ個別に含める）
+    let payload  = {
         iss: baseUrl,
         aud: req.query.client_id,
         sub: "test",
@@ -25,13 +31,45 @@ router.get("/authorize", async (req, res) => {
         name: "taro test",
         given_name: "taro",
         family_name: "test",
-        nonce: req.query.nonce,
-        exp: Math.floor((date.getTime() + (1000 * 30)) / 1000) // 有効期限は30秒
+        nonce: req.query.nonce
     };
-    const code = await utils.generateJWE(jwePayload);
-    console.log(code);
-    // redirect_uriへリダイレクト
-    res.redirect(req.query.redirect_uri + "?code=" + code + "&state=" + req.query.state);
+    // response_typeによる処理の振り分け
+    if(response_types.includes("code")){
+        // code flow
+        // 認可コードの作成
+        payload.exp = Math.floor((date.getTime() + (1000 * 30)) / 1000); // 有効期限は30秒
+        const code = await utils.generateJWE(payload);
+        responseArr.push("code=" + code);
+    }
+    if(response_types.includes("id_token")){
+        // implicit/hybrid
+        // id_tokenの生成
+        payload.exp = Math.floor((date.getTime() + (1000 * 60 * 10)) / 1000);
+        payload.iat = Math.floor(date.getTime() / 1000);
+        const id_token = await utils.generateJWS(payload);
+        responseArr.push("id_token=" + id_token);
+        isImplcitOrHybrid = true;
+    }
+    if(response_types.includes("token")){
+        // implicit/hybrid
+        // access_tokenの生成
+        payload.exp = Math.floor((date.getTime() + (1000 * 60 * 60)) / 1000);
+        payload.iat = Math.floor(date.getTime() / 1000);
+        const access_token = await utils.generateJWS(payload);
+        responseArr.push("access_token=" + access_token);
+        isImplcitOrHybrid = true;
+    }
+    // stateをレスポンスに含める
+    responseArr.push("state=" + req.query.state);
+    const responseParam = responseArr.join("&");
+    // query or fragment
+    if(isImplcitOrHybrid){
+        // implicit/Hybrid flowなのでフラグメントでレスポンスを返却する
+        res.redirect(req.query.redirect_uri + "#" + responseParam);
+    } else {
+        // code flowなのでクエリでレスポンスを返却する
+        res.redirect(req.query.redirect_uri + "?" + responseParam);
+    }
 });
 
 // トークンエンドポイント

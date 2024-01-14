@@ -7,6 +7,8 @@ const crypto = require('crypto');
 const encryptKeyString = "1234567890abcdef1234567890abcdef";
 // 署名用キー
 const keyStoreFile = "../keys/keystoreSign.json";
+// Pairwise識別子生成用のsalt
+const saltForPPID = "1234567890";
 
 // JWEの作成
 exports.generateJWE = async function(payload) {
@@ -45,4 +47,12 @@ exports.createHash = function createHash(plainText){
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=+$/g, '');
+}
+
+// Pairwise識別子の生成
+exports.createPPID = function createPPID(local_identifier, redirect_uri){
+    // sector_identifierの生成
+    const url = new URL(redirect_uri);
+    const sector_identifier = url.host;
+    return crypto.createHash('sha256').update(sector_identifier + local_identifier + saltForPPID).digest('hex');
 }

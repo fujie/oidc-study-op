@@ -22,11 +22,13 @@ router.get("/authorize", async (req, res) => {
     let isImplcitOrHybrid = false;
     // レスポンスを保存する配列
     let responseArr = [];
+    // Pairwise識別子の生成
+    const PPID = utils.createPPID("test", req.query.redirect_uri);
     // ペイロード（暫定なので固定値。有効期限関係だけ個別に含める）
     let payload  = {
         iss: baseUrl,
         aud: req.query.client_id,
-        sub: "test",
+        sub: PPID,
         email: "test@example.jp",
         name: "taro test",
         given_name: "taro",

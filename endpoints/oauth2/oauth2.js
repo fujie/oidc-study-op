@@ -1,6 +1,6 @@
 const router = require("express").Router();
-const { renameSync } = require("fs");
 const utils = require("../../utils/joseUtil");
+const userIdentity = require("../../utils/user");
 const jose = require("node-jose");
 
 // 認可エンドポイント
@@ -16,27 +16,38 @@ router.get("/authorize", async (req, res) => {
     const baseUrl = 'https://' + req.headers.host;
     const date = new Date();
 
+    //
+    // scope関連の処理
+    //
+    // scopeの判断
+    const scopes = req.query.scope.split(" ");
+    // 本来はscopeにopenidが入っていない場合はエラーとする（仕様上はopenidが含まれない場合の動作は未定義）
+    // scopeに応じたユーザの情報を取得する
+    let payload = userIdentity.getUserIdentity(scopes);
+    // Pairwise識別子の生成
+    const PPID = utils.createPPID(payload.local_identifier, req.query.redirect_uri);
+    // ローカル識別子の削除
+    delete payload.local_identifier;
+    // PPIDをsubとして設定
+    payload.sub = PPID;
+
+    // id_tokenに含める共通属性の設定
+    payload.iss = baseUrl;
+    payload.aud = req.query.client_id;
+    payload.nonce = req.query.nonce;
+    
+    //
+    // response_type関連の処理
+    //
     // response_typeの判断
     const response_types = req.query.response_type.split(" ");
     // implicitもしくはHybridを判定するフラグ（フラグメントでレスポンスを返すかどうかの判定）
     let isImplcitOrHybrid = false;
     // レスポンスを保存する配列
     let responseArr = [];
-    // Pairwise識別子の生成
-    const PPID = utils.createPPID("test", req.query.redirect_uri);
-    // ペイロード（暫定なので固定値。有効期限関係だけ個別に含める）
-    let payload  = {
-        iss: baseUrl,
-        aud: req.query.client_id,
-        sub: PPID,
-        email: "test@example.jp",
-        name: "taro test",
-        given_name: "taro",
-        family_name: "test",
-        nonce: req.query.nonce
-    };
-    let c_hash, at_hash;
+    
     // response_typeによる処理の振り分け
+    let c_hash, at_hash;
     if(response_types.includes("code")){
         // code flow
         // 認可コードの作成

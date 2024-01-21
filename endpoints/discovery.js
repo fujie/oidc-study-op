@@ -6,9 +6,14 @@ router.get("/openid-configuration", (req, res) => {
     const response_types = ["code", "code token", "code id_token", "code token id_token", "token", "id_token"];
     const subject_types = ["pairwise"];
     const alg_values = ["RS256"];
-    const scopes = ["openid"];
+    const scopes = ["openid", "profile", "email", "address", "phone"];
     const auth_methods = ["client_secret_post", "client_secret_basic"];
-    const claims =["sub", "name", "given_name", "family_name", "email", "email_verified", "iss", "aud", "exp", "exp", "iat"];
+    const claims_openid = ["sub", "iss", "aud", "exp", "iat", "nonce", "c_hash", "at_hash"];
+    const claims_profile = ["name", "family_name", "given_name", "middle_name", "nick_name", "preffered_username", "profile", "picture", "website", "gender", "birthdate", "zoneinfo", "locale", "updated_at"];
+    const claims_email = ["email", "email_verified"];
+    const claims_address = ["address"];
+    const claims_phone = ["phone_number", "phone_number_verified"];
+    const claims = claims_openid.concat(claims_profile, claims_email, claims_address, claims_phone);
     res.json({
         issuer: baseUrl,
         authorization_endpoint: baseUrl + "/oauth2/authorize",

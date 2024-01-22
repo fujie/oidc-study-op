@@ -1,7 +1,8 @@
 const router = require("express").Router();
+const fs = require("fs");
+const path = require('path');
 const utils = require("../../utils/joseUtil");
 const userIdentity = require("../../utils/user");
-const jose = require("node-jose");
 
 // 認可エンドポイント
 router.get("/authorize", async (req, res) => {
@@ -101,33 +102,66 @@ router.get("/authorize", async (req, res) => {
 // トークンエンドポイント
 router.post("/token", async (req, res) => {
     // 本来なら実装する処理
-    // - クライアントの認証
     // - grant_typeの検証
-    // - codeの検証（有効期限、発行先クライアント、スコープ）
-    // - access_tokenの発行
-    // - id_tokenの発行
-    const decodedCode = await utils.decryptJWE(req.body.code);
-    let decodedCodeJSON = JSON.parse(decodedCode);
-    // 有効期限確認
-    const date = new Date();
-    if(decodedCodeJSON.exp < (Math.floor(date.getTime() / 1000))){
+
+    // - クライアントの認証
+    let client_id, client_secret;
+    if(typeof req.headers.authorization === "undefined"){
+        // client_secret_post
+        client_id = req.body.client_id;
+        client_secret = req.body.client_secret;
+    }else{
+        // client_secret_basic
+        const b64auth = req.headers.authorization.split(" ")[1];
+        [ client_id, client_secret ] = Buffer.from(b64auth, "base64").toString().split(":");
+    }
+    // クライアント情報の読み取り
+    const clients = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../../database/clients.json")));
+    // クライアント登録状態の確認
+    const client = clients.find(i => i.client_id === client_id);
+    if(typeof client === "undefined"){
+        // クライアントが未登録
         res.statusCode = 400;
         res.json({
-            errorMessage: "AuthZ code is expired."
+            errorMessage: "client not found"
         });
-    } else {
-        // payload作成
-        // 単純に期限を延長しているだけ
-        decodedCodeJSON.exp = Math.floor((date.getTime() + (1000 * 60 * 10)) / 1000);
-        decodedCodeJSON.iat = Math.floor(date.getTime() / 1000);
-        const token = await utils.generateJWS(decodedCodeJSON);
-        console.log(token);
-        res.json({
-            access_token: token, // ちなみにEntra IDの場合はaccess_tokenもid_tokenとほぼ同じものが使われるケースもある。
-            token_type: "Bearer",
-            expires_in: 3600,
-            id_token: token
-        });
+    }else{
+        // クライアント登録確認、シークレットの検証
+        if(client.client_secret !== client_secret){
+            // クライアント認証エラー
+            res.statusCode = 400;
+            res.json({
+                errorMessage: "client authentication was failed"
+            });    
+        }else{
+            // クライアント認証成功
+            // - codeの検証（有効期限、発行先クライアント、スコープ）
+            // - access_tokenの発行
+            // - id_tokenの発行
+            const decodedCode = await utils.decryptJWE(req.body.code);
+            let decodedCodeJSON = JSON.parse(decodedCode);
+            // 有効期限確認
+            const date = new Date();
+            if(decodedCodeJSON.exp < (Math.floor(date.getTime() / 1000))){
+                res.statusCode = 400;
+                res.json({
+                    errorMessage: "AuthZ code is expired."
+                });
+            } else {
+                // payload作成
+                // 単純に期限を延長しているだけ
+                decodedCodeJSON.exp = Math.floor((date.getTime() + (1000 * 60 * 10)) / 1000);
+                decodedCodeJSON.iat = Math.floor(date.getTime() / 1000);
+                const token = await utils.generateJWS(decodedCodeJSON);
+                console.log(token);
+                res.json({
+                    access_token: token, // ちなみにEntra IDの場合はaccess_tokenもid_tokenとほぼ同じものが使われるケースもある。
+                    token_type: "Bearer",
+                    expires_in: 3600,
+                    id_token: token
+                });
+            }
+        }
     }
 });
 

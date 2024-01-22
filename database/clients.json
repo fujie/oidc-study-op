@@ -1,0 +1,18 @@
+[
+    {
+        "client_id": "123",
+        "client_secret": "secret",
+        "redirect_uris": [
+            "https://jwt.ms",
+            "http://localhost:3000/cb"
+        ]
+    },
+    {
+        "client_id": "456",
+        "client_secret": "secret",
+        "redirect_uris": [
+            "https://rp.example.jp/cb",
+            "https://rp.example.com/cb"
+        ]
+    }
+]

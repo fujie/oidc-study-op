@@ -47,7 +47,9 @@ router.get("/authorize", async (req, res) => {
             const scopes = req.query.scope.split(" ");
             // 本来はscopeにopenidが入っていない場合はエラーとする（仕様上はopenidが含まれない場合の動作は未定義）
             // scopeに応じたユーザの情報を取得する
-            let payload = userIdentity.getUserIdentity(scopes);
+            // let payload = userIdentity.getUserIdentity(scopes);
+            // ユーザ名を指定して属性情報を取得する
+            let payload = await userIdentity.getUserIdentityByLoginId("test@example.jp", scopes);
             // Pairwise識別子の生成
             const PPID = utils.createPPID(payload.local_identifier, req.query.redirect_uri);
             // ローカル識別子の削除

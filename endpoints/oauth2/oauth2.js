@@ -4,6 +4,7 @@ const path = require('path');
 const utils = require("../../utils/joseUtil");
 const userIdentity = require("../../utils/user");
 const errors = require("../../utils/error");
+require('dotenv').config();
 
 // 認可エンドポイント
 router.get("/authorize", async (req, res) => {
@@ -49,12 +50,21 @@ router.get("/authorize", async (req, res) => {
             const scopes = req.query.scope.split(" ");
             // 本来はscopeにopenidが入っていない場合はエラーとする（仕様上はopenidが含まれない場合の動作は未定義）
             // scopeに応じたユーザの情報を取得する
-            // let payload = userIdentity.getUserIdentity(scopes);
             // ユーザ名を指定して属性情報を取得する
             // login_hintを使う
             let payload = await userIdentity.getUserIdentityByLoginId(login_hint, scopes);
-            // Pairwise識別子の生成
-            const PPID = utils.createPPID(payload.local_identifier, req.query.redirect_uri);
+            // 識別子タイプの判定（Persistent or Transient）
+            let PPID;
+            switch(process.env.IDENTIFIER_TYPE){
+                case "TRANSIENT":
+                    // 魔界異なる識別子を生成する
+                    PPID = crypto.randomUUID();
+                    break;
+                case "PERSISTENT":
+                default:
+                    // Pairwise識別子の生成
+                    PPID = utils.createPPID(payload.local_identifier, req.query.redirect_uri);
+            }
             // ローカル識別子の削除
             delete payload.local_identifier;
             // PPIDをsubとして設定

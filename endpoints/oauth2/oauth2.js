@@ -9,6 +9,8 @@ const errors = require("../../utils/error");
 router.get("/authorize", async (req, res) => {
     // 本来なら実装する処理
     // - ユーザの認証
+    // login_hint属性からユーザ情報を取得する
+    const login_hint = req.query.login_hint;
     // - 属性送出に関する同意画面の表示
 
     // エラーの返却方法にも関連するためresponse_typeの判別は最初にやっておく
@@ -49,7 +51,8 @@ router.get("/authorize", async (req, res) => {
             // scopeに応じたユーザの情報を取得する
             // let payload = userIdentity.getUserIdentity(scopes);
             // ユーザ名を指定して属性情報を取得する
-            let payload = await userIdentity.getUserIdentityByLoginId("test@example.jp", scopes);
+            // login_hintを使う
+            let payload = await userIdentity.getUserIdentityByLoginId(login_hint, scopes);
             // Pairwise識別子の生成
             const PPID = utils.createPPID(payload.local_identifier, req.query.redirect_uri);
             // ローカル識別子の削除
